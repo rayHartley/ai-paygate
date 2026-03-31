@@ -2,7 +2,7 @@
 // Implements the x402 payment protocol for AI service endpoints
 import { Request, Response, NextFunction } from 'express';
 import { config, AI_SERVICES } from '../config';
-import { createPayment, getPayment, updatePaymentStatus, hasUsedFreeTrial, recordFreeTrial } from '../db';
+import { createPayment, getPayment, updatePaymentStatus, deductFreeTrialBalance, getFreeTrialBalance } from '../db';
 import { verifyTransaction, getWalletAddress } from '../tron/client';
 import type { X402PaymentRequired } from '../types';
 
@@ -85,25 +85,29 @@ export function x402Gate(options: X402GateOptions) {
       return;
     }
 
-    // Check for free trial (one free use per user per service)
+    // Check for free trial (balance-based system)
     const userAddress = payer || req.headers['x-payer'] as string || 'anonymous_' + Date.now();
-    if (!hasUsedFreeTrial(userAddress, serviceId)) {
-      // Grant free trial
-      recordFreeTrial(userAddress, serviceId);
-      const freeTrialPayId = createPayment(serviceId, service.priceUsdt, 'USDT', getWalletAddress());
-      const freeMockTxHash = `free_trial_${Date.now()}`;
-      updatePaymentStatus(freeTrialPayId, 'paid', freeMockTxHash, userAddress);
+    const balance = getFreeTrialBalance(userAddress);
 
-      (req as any).payment = {
-        payId: freeTrialPayId,
-        txHash: freeMockTxHash,
-        amount: service.priceUsdt,
-        status: 'paid',
-        isFreeTrial: true,
-      };
-      console.log(`[x402] Free trial granted to ${userAddress} for ${serviceId}`);
-      next();
-      return;
+    if (balance === null || balance >= service.priceUsdt) {
+      // User either doesn't have balance yet (will be initialized) or has enough balance
+      if (deductFreeTrialBalance(userAddress, service.priceUsdt)) {
+        const freeTrialPayId = createPayment(serviceId, service.priceUsdt, 'USDT', getWalletAddress());
+        const freeMockTxHash = `free_trial_${Date.now()}`;
+        updatePaymentStatus(freeTrialPayId, 'paid', freeMockTxHash, userAddress);
+
+        const newBalance = getFreeTrialBalance(userAddress);
+        (req as any).payment = {
+          payId: freeTrialPayId,
+          txHash: freeMockTxHash,
+          amount: service.priceUsdt,
+          status: 'paid',
+          isFreeTrial: true,
+        };
+        console.log(`[x402] Free trial used - user ${userAddress} balance: ${newBalance?.toFixed(2)} USDT`);
+        next();
+        return;
+      }
     }
 
     // No valid payment found → return 402 Payment Required

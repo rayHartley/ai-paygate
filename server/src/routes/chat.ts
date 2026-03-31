@@ -1,7 +1,7 @@
 // Chat Route - Unified AI chat endpoint with payment gate
 import { Router, Request, Response } from 'express';
 import { AI_SERVICES, config } from '../config';
-import { createPayment, updatePaymentStatus, createInvocation, hasUsedFreeTrial, recordFreeTrial } from '../db';
+import { createPayment, updatePaymentStatus, createInvocation, deductFreeTrialBalance, getFreeTrialBalance } from '../db';
 import { verifyTransaction, getWalletAddress } from '../tron/client';
 import { callLLM } from '../services/llm';
 import { ok, err } from '../types';
@@ -70,15 +70,19 @@ router.post('/chat/service', async (req: Request, res: Response) => {
   // Check for free trial
   if (!paymentValid && !config.mockMode) {
     const userAddress = payer || 'user_' + Date.now();
-    if (!hasUsedFreeTrial(userAddress, serviceId)) {
-      // Grant free trial
-      recordFreeTrial(userAddress, serviceId);
-      finalPayId = createPayment(serviceId, service.priceUsdt, 'USDT', getWalletAddress());
-      finalTxHash = `free_trial_${Date.now()}`;
-      updatePaymentStatus(finalPayId, 'paid', finalTxHash, userAddress);
-      paymentValid = true;
-      isFreeTrial = true;
-      console.log(`[chat] Free trial granted to ${userAddress} for ${serviceId}`);
+    const balance = getFreeTrialBalance(userAddress);
+
+    if (balance === null || balance >= service.priceUsdt) {
+      // User either doesn't have balance yet (will be initialized) or has enough balance
+      if (deductFreeTrialBalance(userAddress, service.priceUsdt)) {
+        finalPayId = createPayment(serviceId, service.priceUsdt, 'USDT', getWalletAddress());
+        finalTxHash = `free_trial_${Date.now()}`;
+        updatePaymentStatus(finalPayId, 'paid', finalTxHash, userAddress);
+        paymentValid = true;
+        isFreeTrial = true;
+        const newBalance = getFreeTrialBalance(userAddress);
+        console.log(`[chat] Free trial used - user ${userAddress} balance: ${newBalance?.toFixed(2)} USDT`);
+      }
     }
   }
 

@@ -60,8 +60,8 @@ export function initDb(): Database.Database {
 
     CREATE TABLE IF NOT EXISTS free_trials (
       user_address TEXT PRIMARY KEY,
-      service_id TEXT NOT NULL,
-      used_at TEXT NOT NULL DEFAULT (datetime('now'))
+      balance REAL NOT NULL DEFAULT 1.0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
@@ -142,16 +142,39 @@ export function getPaymentStats(): any {
   return stats;
 }
 
-// Free trial helpers
-export function hasUsedFreeTrial(userAddress: string, serviceId: string): boolean {
+// Free trial helpers - balance-based system
+export function getFreeTrialBalance(userAddress: string): number {
   const result = getDb().prepare(`
-    SELECT 1 FROM free_trials WHERE user_address = ? AND service_id = ?
-  `).get(userAddress, serviceId);
-  return !!result;
+    SELECT balance FROM free_trials WHERE user_address = ?
+  `).get(userAddress);
+  return result?.balance ?? null; // null = user never got free trial yet
 }
 
-export function recordFreeTrial(userAddress: string, serviceId: string): void {
+export function initializeFreeTrial(userAddress: string, initialBalance: number = 1.0): void {
   getDb().prepare(`
-    INSERT OR IGNORE INTO free_trials (user_address, service_id) VALUES (?, ?)
-  `).run(userAddress, serviceId);
+    INSERT OR IGNORE INTO free_trials (user_address, balance) VALUES (?, ?)
+  `).run(userAddress, initialBalance);
+}
+
+export function deductFreeTrialBalance(userAddress: string, amount: number): boolean {
+  const balance = getFreeTrialBalance(userAddress);
+
+  // User hasn't been initialized yet, initialize them
+  if (balance === null) {
+    initializeFreeTrial(userAddress, 1.0);
+    return 1.0 >= amount; // Check if initial balance is enough
+  }
+
+  // Check if balance is sufficient
+  if (balance < amount) {
+    return false;
+  }
+
+  // Deduct the amount
+  const newBalance = balance - amount;
+  getDb().prepare(`
+    UPDATE free_trials SET balance = ? WHERE user_address = ?
+  `).run(newBalance, userAddress);
+
+  return true;
 }

@@ -44,7 +44,10 @@ export async function callLLM(messages: ChatMessage[], maxTokens: number = 4096)
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
+    let content = data.choices?.[0]?.message?.content || '';
+
+    // Remove <think> tags and their content (MiniMax thinking chain)
+    content = content.replace(/<think>[\s\S]*?<\/think>\n?/g, '').trim();
 
     console.log(`[LLM] Success - generated ${content.length} characters`);
     return {
