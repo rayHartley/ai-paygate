@@ -78,6 +78,7 @@ interface ChatMessage {
   content: string;
   serviceId?: string;
   payment?: any;
+  isFreeTrial?: boolean;
   timestamp: string;
 }
 

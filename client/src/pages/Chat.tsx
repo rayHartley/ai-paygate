@@ -62,7 +62,16 @@ export default function Chat() {
             content: res.data.result,
             serviceId: activeService,
             payment: res.data.payment,
+            isFreeTrial: res.data.payment?.isFreeTrial,
           });
+
+          // Show free trial notification
+          if (res.data.payment?.isFreeTrial) {
+            addMessage({
+              role: 'system',
+              content: `✨ **Free Trial Used**: You've used your one free trial for ${selectedService.name}. Future requests to this service will require payment.`,
+            });
+          }
         } else if (res.error === 'Payment Required') {
           addMessage({
             role: 'system',

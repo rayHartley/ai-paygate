@@ -1,7 +1,7 @@
 // Chat Route - Unified AI chat endpoint with payment gate
 import { Router, Request, Response } from 'express';
 import { AI_SERVICES, config } from '../config';
-import { createPayment, updatePaymentStatus, createInvocation } from '../db';
+import { createPayment, updatePaymentStatus, createInvocation, hasUsedFreeTrial, recordFreeTrial } from '../db';
 import { verifyTransaction, getWalletAddress } from '../tron/client';
 import { callLLM, getFallbackResponse } from '../services/llm';
 import { ok, err } from '../types';
@@ -60,6 +60,7 @@ router.post('/chat/service', async (req: Request, res: Response) => {
   let paymentValid = false;
   let finalPayId = payId;
   let finalTxHash = txHash;
+  let isFreeTrial = false;
 
   // Demo mode bypass
   if (config.mockMode && (req.headers['x-demo-mode'] === 'true' || req.body.demo === true)) {
@@ -67,6 +68,21 @@ router.post('/chat/service', async (req: Request, res: Response) => {
     finalTxHash = `mock_chat_${Date.now()}`;
     updatePaymentStatus(finalPayId, 'paid', finalTxHash, payer || 'TDemoUser');
     paymentValid = true;
+  }
+
+  // Check for free trial
+  if (!paymentValid && !config.mockMode) {
+    const userAddress = payer || 'user_' + Date.now();
+    if (!hasUsedFreeTrial(userAddress, serviceId)) {
+      // Grant free trial
+      recordFreeTrial(userAddress, serviceId);
+      finalPayId = createPayment(serviceId, service.priceUsdt, 'USDT', getWalletAddress());
+      finalTxHash = `free_trial_${Date.now()}`;
+      updatePaymentStatus(finalPayId, 'paid', finalTxHash, userAddress);
+      paymentValid = true;
+      isFreeTrial = true;
+      console.log(`[chat] Free trial granted to ${userAddress} for ${serviceId}`);
+    }
   }
 
   // Verify tx hash if provided
@@ -118,7 +134,7 @@ router.post('/chat/service', async (req: Request, res: Response) => {
       result,
       invocationId,
       service: { id: service.id, name: service.name, price: service.priceUsdt },
-      payment: { payId: finalPayId, txHash: finalTxHash },
+      payment: { payId: finalPayId, txHash: finalTxHash, isFreeTrial },
       usage: llmResult.usage,
     }));
   } catch (e: any) {
