@@ -2,7 +2,7 @@
 import { Router, Request, Response } from 'express';
 import { AI_SERVICES } from '../config';
 import { x402Gate } from '../middleware/x402';
-import { executeAIService, getFallbackResponse } from '../services/llm';
+import { executeAIService } from '../services/llm';
 import { createInvocation } from '../db';
 import { ok, err } from '../types';
 
@@ -54,9 +54,15 @@ for (const service of AI_SERVICES) {
       }
 
       try {
-        // Try LLM first, fall back to demo response
+        // Call LLM service
         const llmResult = await executeAIService(service.id, service.systemPrompt, prompt);
-        const result = llmResult.success ? llmResult.content : getFallbackResponse(service.id, prompt);
+
+        if (!llmResult.success) {
+          res.status(500).json(err(`Service error: ${llmResult.error}`));
+          return;
+        }
+
+        const result = llmResult.content;
 
         // Record the invocation
         const invocationId = createInvocation(

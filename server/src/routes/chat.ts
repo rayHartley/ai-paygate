@@ -3,7 +3,7 @@ import { Router, Request, Response } from 'express';
 import { AI_SERVICES, config } from '../config';
 import { createPayment, updatePaymentStatus, createInvocation, hasUsedFreeTrial, recordFreeTrial } from '../db';
 import { verifyTransaction, getWalletAddress } from '../tron/client';
-import { callLLM, getFallbackResponse } from '../services/llm';
+import { callLLM } from '../services/llm';
 import { ok, err } from '../types';
 import type { ChatMessage } from '../types';
 
@@ -33,11 +33,8 @@ Be concise, helpful, and encourage users to try the paid AI services for better 
   if (result.success) {
     res.json(ok({ reply: result.content, usage: result.usage }));
   } else {
-    // Fallback response
-    res.json(ok({
-      reply: `Welcome to AI PayGate! I'm your assistant. We offer ${AI_SERVICES.length} AI services powered by x402 micropayments on TRON. Try our AI Writing Assistant, Translator, Code Review, Data Analyst, or Summarizer. Each service costs a small fee in USDT. How can I help you?`,
-      isFallback: true,
-    }));
+    // Return error if API fails
+    res.status(500).json(err(`LLM service error: ${result.error}`));
   }
 });
 
@@ -126,7 +123,13 @@ router.post('/chat/service', async (req: Request, res: Response) => {
     ];
 
     const llmResult = await callLLM(messages);
-    const result = llmResult.success ? llmResult.content : getFallbackResponse(serviceId, prompt);
+
+    if (!llmResult.success) {
+      res.status(500).json(err(`LLM service error: ${llmResult.error}`));
+      return;
+    }
+
+    const result = llmResult.content;
 
     const invocationId = createInvocation(serviceId, payer || '', prompt, result, finalPayId, finalTxHash);
 
