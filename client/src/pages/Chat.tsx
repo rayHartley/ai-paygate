@@ -52,8 +52,8 @@ export default function Chat() {
       if (activeService && selectedService) {
         // Paid service chat
         const res = await chatService(activeService, userMessage, {
-          payer: address,
-          demo: true, // Use demo mode for hackathon
+          payer: address || 'user_' + Date.now().toString(36),
+          demo: false, // Use real mode with free trial
         });
 
         if (res.success) {

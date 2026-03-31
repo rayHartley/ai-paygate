@@ -2,7 +2,7 @@
 // Implements the x402 payment protocol for AI service endpoints
 import { Request, Response, NextFunction } from 'express';
 import { config, AI_SERVICES } from '../config';
-import { createPayment, getPayment, updatePaymentStatus } from '../db';
+import { createPayment, getPayment, updatePaymentStatus, hasUsedFreeTrial, recordFreeTrial } from '../db';
 import { verifyTransaction, getWalletAddress } from '../tron/client';
 import type { X402PaymentRequired } from '../types';
 
@@ -81,6 +81,27 @@ export function x402Gate(options: X402GateOptions) {
         status: 'paid',
         isDemo: true,
       };
+      next();
+      return;
+    }
+
+    // Check for free trial (one free use per user per service)
+    const userAddress = payer || req.headers['x-payer'] as string || 'anonymous_' + Date.now();
+    if (!hasUsedFreeTrial(userAddress, serviceId)) {
+      // Grant free trial
+      recordFreeTrial(userAddress, serviceId);
+      const freeTrialPayId = createPayment(serviceId, service.priceUsdt, 'USDT', getWalletAddress());
+      const freeMockTxHash = `free_trial_${Date.now()}`;
+      updatePaymentStatus(freeTrialPayId, 'paid', freeMockTxHash, userAddress);
+
+      (req as any).payment = {
+        payId: freeTrialPayId,
+        txHash: freeMockTxHash,
+        amount: service.priceUsdt,
+        status: 'paid',
+        isFreeTrial: true,
+      };
+      console.log(`[x402] Free trial granted to ${userAddress} for ${serviceId}`);
       next();
       return;
     }

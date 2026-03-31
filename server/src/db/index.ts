@@ -58,6 +58,12 @@ export function initDb(): Database.Database {
       last_active TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS free_trials (
+      user_address TEXT PRIMARY KEY,
+      service_id TEXT NOT NULL,
+      used_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
     CREATE INDEX IF NOT EXISTS idx_payments_payer ON payments(payer);
     CREATE INDEX IF NOT EXISTS idx_invocations_service ON invocations(service_id);
@@ -134,4 +140,18 @@ export function getPaymentStats(): any {
     FROM payments
   `).get();
   return stats;
+}
+
+// Free trial helpers
+export function hasUsedFreeTrial(userAddress: string, serviceId: string): boolean {
+  const result = getDb().prepare(`
+    SELECT 1 FROM free_trials WHERE user_address = ? AND service_id = ?
+  `).get(userAddress, serviceId);
+  return !!result;
+}
+
+export function recordFreeTrial(userAddress: string, serviceId: string): void {
+  getDb().prepare(`
+    INSERT OR IGNORE INTO free_trials (user_address, service_id) VALUES (?, ?)
+  `).run(userAddress, serviceId);
 }
