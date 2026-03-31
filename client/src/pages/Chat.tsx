@@ -24,6 +24,10 @@ export default function Chat() {
   const { connected, address, connect } = useWallet();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Payment state
+  const [pendingPayment, setPendingPayment] = useState<{ payId: string; amount: number; recipient: string; network: string; prompt: string } | null>(null);
+  const [txHash, setTxHash] = useState('');
+
   useEffect(() => {
     getServices().then((res) => {
       if (res.success) setServices(res.data);
@@ -69,13 +73,21 @@ export default function Chat() {
           if (res.data.payment?.isFreeTrial) {
             addMessage({
               role: 'system',
-              content: `✨ **Free Trial Used**: You've used your one free trial for ${selectedService.name}. Future requests to this service will require payment.`,
+              content: `✨ **Free Trial Used**: You've used your free trial balance for ${selectedService.name}. Future requests to this service will require payment.`,
             });
           }
         } else if (res.error === 'Payment Required') {
+          // Save payment requirement and show input for tx hash
+          setPendingPayment({
+            payId: res.paymentRequired?.payId,
+            amount: selectedService.priceUsdt,
+            recipient: res.paymentRequired?.recipient,
+            network: res.paymentRequired?.network,
+            prompt: userMessage,
+          });
           addMessage({
             role: 'system',
-            content: `**Payment Required**: ${selectedService.name} costs **${selectedService.priceUsdt} USDT** per request.\n\nSend payment to \`${res.paymentRequired?.recipient}\` on TRON (${res.paymentRequired?.network}).\n\nPay ID: \`${res.paymentRequired?.payId}\``,
+            content: `**Payment Required**: ${selectedService.name} costs **${selectedService.priceUsdt} USDT** per request.\n\nSend payment to \`${res.paymentRequired?.recipient}\` on TRON (${res.paymentRequired?.network}).\n\nPay ID: \`${res.paymentRequired?.payId}\`\n\nOnce payment is confirmed, enter the transaction hash below.`,
           });
         } else {
           addMessage({ role: 'assistant', content: `Error: ${res.error}` });
@@ -97,9 +109,53 @@ export default function Chat() {
       }
     } catch (e: any) {
       addMessage({ role: 'assistant', content: `Error: ${e.message || 'Request failed'}` });
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setLoading(false);
+  const handlePaymentConfirm = async () => {
+    if (!txHash.trim() || !pendingPayment || loading) return;
+
+    setLoading(true);
+    try {
+      if (activeService && selectedService) {
+        // Retry with transaction hash
+        const res = await chatService(activeService, pendingPayment.prompt, {
+          txHash: txHash.trim(),
+          payId: pendingPayment.payId,
+          payer: address || 'user_' + Date.now().toString(36),
+          demo: false,
+        });
+
+        if (res.success) {
+          addMessage({
+            role: 'assistant',
+            content: res.data.result,
+            serviceId: activeService,
+            payment: res.data.payment,
+          });
+          addMessage({
+            role: 'system',
+            content: `✅ **Payment Confirmed**: Transaction \`${txHash.substring(0, 10)}...\` verified. Your request has been processed.`,
+          });
+          // Clear payment state
+          setPendingPayment(null);
+          setTxHash('');
+        } else if (res.error === 'Payment Required') {
+          addMessage({
+            role: 'system',
+            content: `❌ **Payment Verification Failed**: The transaction hash could not be verified. Please check the hash and try again.`,
+          });
+        } else {
+          addMessage({ role: 'assistant', content: `Error: ${res.error}` });
+        }
+      }
+    } catch (e: any) {
+      addMessage({ role: 'assistant', content: `Error: ${e.message || 'Payment confirmation failed'}` });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -232,28 +288,78 @@ export default function Chat() {
             </button>
           </div>
         )}
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            placeholder={
-              activeService
-                ? `Message ${selectedService?.name || 'AI Service'}... (${selectedService?.priceUsdt} USDT/req)`
-                : 'Ask me anything (free)...'
-            }
-            className="flex-1 bg-transparent text-white placeholder-gray-500 outline-none text-sm"
-            disabled={loading}
-          />
-          <button
-            onClick={handleSend}
-            disabled={loading || !input.trim()}
-            className="p-2 rounded-lg bg-tron-accent/20 text-tron-accent hover:bg-tron-accent/30 disabled:opacity-30 transition-all"
-          >
-            <Send size={18} />
-          </button>
-        </div>
+
+        {pendingPayment ? (
+          // Payment confirmation input
+          <div className="space-y-3">
+            <div className="bg-tron-accent/10 border border-tron-accent/20 rounded-lg px-3 py-2 text-sm">
+              <div className="text-gray-300 mb-2">Payment pending for:</div>
+              <div className="text-tron-accent font-semibold">{pendingPayment.amount} USDT → {pendingPayment.recipient}</div>
+              <div className="text-xs text-gray-400 mt-1">Network: {pendingPayment.network}</div>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={txHash}
+                onChange={(e) => setTxHash(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handlePaymentConfirm()}
+                placeholder="Enter transaction hash (0x...)"
+                className="flex-1 bg-transparent text-white placeholder-gray-500 outline-none text-sm border-b border-white/20 pb-1"
+                disabled={loading}
+              />
+              <button
+                onClick={handlePaymentConfirm}
+                disabled={loading || !txHash.trim()}
+                className="px-4 py-2 rounded-lg bg-tron-accent text-black font-semibold text-sm hover:bg-tron-accent/90 disabled:opacity-30 transition-all flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  <>
+                    <Coins size={14} />
+                    Confirm Payment
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  setPendingPayment(null);
+                  setTxHash('');
+                }}
+                className="px-3 py-2 rounded-lg bg-white/10 text-gray-300 text-sm hover:bg-white/20 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          // Normal chat input
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              placeholder={
+                activeService
+                  ? `Message ${selectedService?.name || 'AI Service'}... (${selectedService?.priceUsdt} USDT/req)`
+                  : 'Ask me anything (free)...'
+              }
+              className="flex-1 bg-transparent text-white placeholder-gray-500 outline-none text-sm"
+              disabled={loading}
+            />
+            <button
+              onClick={handleSend}
+              disabled={loading || !input.trim()}
+              className="p-2 rounded-lg bg-tron-accent/20 text-tron-accent hover:bg-tron-accent/30 disabled:opacity-30 transition-all"
+            >
+              <Send size={18} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
