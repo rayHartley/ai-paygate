@@ -16,9 +16,9 @@ export const config = {
   facilitatorUrl: process.env.FACILITATOR_URL || 'https://facilitator.bankofai.io',
 
   // LLM API
-  llmApiUrl: process.env.LLM_API_URL || 'http://yy.dbh.baidu-int.com/v1/chat/completions',
+  llmApiUrl: process.env.LLM_API_URL || 'https://api.minimaxi.com/v1/chat/completions',
   llmApiKey: process.env.LLM_API_KEY || '',
-  llmModel: process.env.LLM_MODEL || 'gpt-4.1',
+  llmModel: process.env.LLM_MODEL || 'MiniMax-M2.7',
 
   // Mock mode (for demo without real TRON keys)
   mockMode: process.env.MOCK_MODE === 'true',

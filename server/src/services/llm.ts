@@ -1,4 +1,4 @@
-// LLM API wrapper - uses Anthropic Claude via OpenAI-compatible API
+// LLM API wrapper - uses MiniMax M2.7 API (OpenAI compatible)
 import { config } from '../config';
 import type { ChatMessage } from '../types';
 
@@ -22,6 +22,7 @@ export async function callLLM(messages: ChatMessage[], maxTokens: number = 4096)
 
   try {
     console.log(`[LLM] Calling ${config.llmModel} at ${config.llmApiUrl}`);
+
     const response = await fetch(config.llmApiUrl, {
       method: 'POST',
       headers: {
