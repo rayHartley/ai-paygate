@@ -16,7 +16,8 @@ export async function getTronWeb(): Promise<any> {
     const TronWeb = require('tronweb');
     tronWebInstance = new TronWeb({
       fullHost: config.tronFullHost,
-      privateKey: config.tronPrivateKey,
+      // No privateKey needed - we only do read operations (verify payments, check balances)
+      // Users pay from their own wallets
     });
     console.log(`[TRON] Connected to ${config.tronNetwork} (${config.tronFullHost})`);
     return tronWebInstance;
@@ -159,15 +160,8 @@ export async function verifyTransaction(txHash: string): Promise<boolean> {
   }
 }
 
-// Get wallet address from private key
+// Get wallet address (payment recipient)
 export function getWalletAddress(): string {
-  if (config.mockMode || !config.tronPrivateKey) {
-    return 'TMockPayGateAddress1234567890ABC';
-  }
-  try {
-    const TronWeb = require('tronweb');
-    return TronWeb.address.fromPrivateKey(config.tronPrivateKey);
-  } catch {
-    return '';
-  }
+  // Return the configured payment recipient address
+  return config.paymentRecipient;
 }

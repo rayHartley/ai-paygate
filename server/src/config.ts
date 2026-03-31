@@ -7,10 +7,9 @@ export const config = {
 
   // TRON Network
   tronNetwork: process.env.TRON_NETWORK || 'nile', // nile | shasta | mainnet
-  tronPrivateKey: process.env.TRON_PRIVATE_KEY || '',
   tronFullHost: process.env.TRON_FULL_HOST || 'https://nile.trongrid.io',
 
-  // Payment recipient wallet
+  // Payment recipient wallet (for receiving payments, no private key needed)
   paymentRecipient: process.env.PAYMENT_RECIPIENT || '',
 
   // Facilitator
@@ -22,7 +21,7 @@ export const config = {
   llmModel: process.env.LLM_MODEL || 'gpt-4.1',
 
   // Mock mode (for demo without real TRON keys)
-  mockMode: process.env.MOCK_MODE === 'true' || !process.env.TRON_PRIVATE_KEY,
+  mockMode: process.env.MOCK_MODE === 'true',
 
   // CORS
   corsOrigin: process.env.CORS_ORIGIN || '*',
