@@ -75,7 +75,7 @@ AI PayGate is an AI-powered micropayment gateway that lets AI agents provide ser
 
 ### 🌐 Public Demo (Easiest)
 
-Visit the live deployment: **https://ai-paygate-xxxxx.onrender.com**
+Visit the live deployment: **[https://ai-paygate.onrender.com](https://ai-paygate.onrender.com)**
 
 1. Click "Connect Wallet" → Get virtual 2 USDT balance
 2. Select a service (Chat tab)
