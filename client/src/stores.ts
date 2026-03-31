@@ -45,7 +45,7 @@ export const useWallet = create<WalletState>((set) => ({
         connected: true,
         address: 'TDemoUserPayGate' + Date.now().toString(36).slice(-8),
         network: 'nile',
-        balances: { TRX: '1000.00', USDT: '500.00', USDD: '250.00' },
+        balances: { TRX: '10.00', USDT: '2.00', USDD: '1.00' },
         connecting: false,
       });
     } catch (e) {
@@ -54,7 +54,7 @@ export const useWallet = create<WalletState>((set) => ({
       set({
         connected: true,
         address: 'TDemoUser' + Date.now().toString(36).slice(-8),
-        balances: { TRX: '1000.00', USDT: '500.00', USDD: '250.00' },
+        balances: { TRX: '10.00', USDT: '2.00', USDD: '1.00' },
         connecting: false,
       });
     }
