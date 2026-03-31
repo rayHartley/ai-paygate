@@ -143,10 +143,10 @@ export function getPaymentStats(): any {
 }
 
 // Free trial helpers - balance-based system
-export function getFreeTrialBalance(userAddress: string): number {
+export function getFreeTrialBalance(userAddress: string): number | null {
   const result = getDb().prepare(`
     SELECT balance FROM free_trials WHERE user_address = ?
-  `).get(userAddress);
+  `).get(userAddress) as { balance: number } | undefined;
   return result?.balance ?? null; // null = user never got free trial yet
 }
 
