@@ -99,10 +99,10 @@ export default function Dashboard() {
             <Wallet size={18} className="text-tron-accent" />
             Service Wallet
           </h2>
-          <div className="space-y-3 text-sm">
+          <div className="space-y-3 text-xs">
             <div className="flex justify-between">
               <span className="text-gray-400">Address</span>
-              <span className="text-white font-mono text-xs">
+              <span className="text-white font-mono text-[0.7rem]">
                 {walletInfo?.address
                   ? `${walletInfo.address.slice(0, 8)}...${walletInfo.address.slice(-6)}`
                   : '—'}
@@ -110,15 +110,15 @@ export default function Dashboard() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">TRX</span>
-              <span className="text-white">{walletInfo?.balances?.TRX ?? '—'}</span>
+              <span className="text-white text-sm">{walletInfo?.balances?.TRX ?? '—'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">USDT</span>
-              <span className="text-green-400">{walletInfo?.balances?.USDT ?? '—'}</span>
+              <span className="text-green-400 text-sm">{walletInfo?.balances?.USDT ?? '—'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">USDD</span>
-              <span className="text-blue-400">{walletInfo?.balances?.USDD ?? '—'}</span>
+              <span className="text-blue-400 text-sm">{walletInfo?.balances?.USDD ?? '—'}</span>
             </div>
           </div>
         </div>
