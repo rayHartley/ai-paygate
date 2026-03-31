@@ -2,7 +2,7 @@
 
 > **TRON x Bank of AI Hackathon 2026** — AI Payment Agent
 
-🌐 **[Live Demo](https://ai-paygate-xxxxx.onrender.com)** — Try now with virtual wallet balances!
+🌐 **[Live Website](https://ai-paygate.onrender.com)** — Try now with virtual wallet balances!
 
 AI PayGate is an AI-powered micropayment gateway that lets AI agents provide services and automatically collect payments in USDT/USDD on the TRON blockchain via the **x402 payment protocol**.
 
