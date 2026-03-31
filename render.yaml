@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: ai-paygate
+    runtime: node
+    plan: free
+    buildCommand: cd client && npm install && npm run build && cd ../server && npm install
+    startCommand: cd server && npm run build && node dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: TRON_NETWORK
+        sync: false
+      - key: TRON_FULL_HOST
+        value: https://api.trongrid.io
+      - key: TRON_PRIVATE_KEY
+        sync: false
+      - key: PAYMENT_RECIPIENT
+        sync: false
+      - key: MOCK_MODE
+        value: "false"
+      - key: LLM_API_URL
+        value: https://anyrouter.top/v1/chat/completions
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: Haiku 4.5
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: FACILITATOR_URL
+        value: https://facilitator.bankofai.io
