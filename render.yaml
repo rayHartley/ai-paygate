@@ -11,13 +11,13 @@ services:
       - key: PORT
         value: "3000"
       - key: TRON_NETWORK
-        sync: false
+        value: nile
       - key: TRON_FULL_HOST
         value: https://api.trongrid.io
       - key: PAYMENT_RECIPIENT
         value: TYHPR2gWp2ABy7aKhC9uX6B9iXwWZEwFGB
       - key: MOCK_MODE
-        value: "false"
+        value: "true"
       - key: LLM_API_URL
         value: https://anyrouter.top/v1/chat/completions
       - key: LLM_API_KEY
