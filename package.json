@@ -1,20 +1,9 @@
 {
   "name": "ai-paygate",
   "version": "1.0.0",
-  "description": "AI Payment Agent - AI services marketplace with x402 micropayments on TRON",
   "private": true,
-  "engines": {
-    "node": ">=18"
-  },
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:server": "cd server && npm run dev",
-    "dev:client": "cd client && npm run dev",
-    "build": "cd client && npm run build",
-    "start": "cd server && npm start",
-    "setup": "npm install && cd server && npm install && cd ../client && npm install"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
+    "build": "cd client && npm install && npm run build && cd ../server && npm install",
+    "start": "cd server && npm run build && node dist/index.js"
   }
 }
